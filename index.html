@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IntentWave + Ketch Test</title>
+
+    <!-- STEP 1: Ketch Smart Tag -->
+    <script>!function(){window.semaphore=window.semaphore||[],window.ketch=function(){window.semaphore.push(arguments)};var e=new URLSearchParams(document.location.search),n=document.createElement("script");n.type="text/javascript",n.src="https://global.ketchcdn.com/web/v3/config/intentwave_sc/website_smart_tag/boot.js",n.defer=n.async=!0,document.getElementsByTagName("head")[0].appendChild(n)}();</script>
+
+    <!-- STEP 2: IntentWave Tracking Script — replace data-id with your IntentWave Site ID -->
+    <script>
+        window.IntentWave = window.IntentWave || {};
+        window.IntentWave.track = window.IntentWave.track || function () {
+            window.IntentWave.track.q = window.IntentWave.track.q || [];
+            window.IntentWave.track.q.push(arguments)
+        };
+        (function () {
+            var u = 'https://cdn.intentwave.com/';
+            var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+            g.type = 'text/javascript'; g.async = !0; g.defer = !0;
+            g.src = u + 'track.js';
+            g.setAttribute('data-name', 'IntentWave');
+            g.setAttribute('data-id', 'fb21eafe-aefd-4b34-87b8-9a6a4c3ae561');
+            s.parentNode.insertBefore(g, s)
+        })()
+    </script>
+
+
+    <!-- STEP 3: IntentWave Custom Consent Script (Ketch) -->
+    <script>
+        function buildIntentWaveCategories(purposes) {
+            var categories = [];
+            if (purposes.essential_services) categories.push("necessary");
+            if (purposes.analytics) categories.push("analytics", "performance");
+            if (purposes.marketing) categories.push("emailmarketing", "ads", "social");
+            return categories;
+        }
+
+        function generateConsentId() {
+            return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0;
+                var v = c === "x" ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function passConsentToIntentWave(consent) {
+            var purposes = consent.purposes || consent;
+            if (!purposes.marketing) return;
+
+            var attempts = 0;
+            var maxAttempts = 50;
+            var interval = setInterval(function () {
+                attempts++;
+                if (typeof IntentWave !== "undefined" && typeof IntentWave.customConsent === "function") {
+                    clearInterval(interval);
+                    IntentWave.customConsent({
+                        categories: buildIntentWaveCategories(purposes),
+                        consentTimestamp: new Date().toISOString(),
+                        consentId: generateConsentId(),
+                        provider: "ketch",
+                        consentURL: window.location.href
+                    });
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(interval);
+                }
+            }, 200);
+        }
+
+        ketch('on', 'consent', passConsentToIntentWave);
+    </script>
+</head>
+
+<body>
+    <h1>IntentWave + Ketch Test Page</h1>
+    <p>This page is used to test the Ketch and IntentWave consent integration.</p>
+    <p>When you accept cookies, consent data should be sent to IntentWave automatically.</p>
+
+    <hr />
+    <h2>How to test:</h2>
+    <ol>
+        <li>Accept cookies on the Ketch banner that appears</li>
+        <li>Open browser DevTools → Console — you should see no errors</li>
+        <li>Check your IntentWave dashboard for a new consent record</li>
+        <li>Check your Ketch dashboard for consent activity</li>
+    </ol>
+</body>
+
+</html>
