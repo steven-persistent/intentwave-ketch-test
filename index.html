@@ -47,7 +47,7 @@
 
         function passConsentToIntentWave(consent) {
             var purposes = consent.purposes || consent;
-            if (!purposes.targeted_advertising) return;
+            if (!purposes) return;
 
             var attempts = 0;
             var maxAttempts = 50;
