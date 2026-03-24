@@ -33,7 +33,7 @@
             var categories = [];
             if (purposes.essential_services) categories.push("necessary");
             if (purposes.analytics) categories.push("analytics", "performance");
-            if (purposes.marketing) categories.push("emailmarketing", "ads", "social");
+            if (purposes.targeted_advertising) categories.push("emailmarketing", "ads", "social");
             return categories;
         }
 
@@ -47,7 +47,7 @@
 
         function passConsentToIntentWave(consent) {
             var purposes = consent.purposes || consent;
-            if (!purposes.marketing) return;
+            if (!purposes.targeted_advertising) return;
 
             var attempts = 0;
             var maxAttempts = 50;
