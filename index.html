@@ -68,7 +68,14 @@
             }, 200);
         }
 
-        ketch('on', 'consent', passConsentToIntentWave);
+        passConsentToIntentWave({
+            essential_services: true,
+            analytics: true,
+            targeted_advertising: true
+        });
+
+    // ✅ KEEP: Update if user makes an actual choice in the Ketch banner
+    ketch('on', 'consent', passConsentToIntentWave);
     </script>
 </head>
 
