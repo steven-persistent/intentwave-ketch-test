@@ -53,7 +53,14 @@
             var maxAttempts = 50;
             var interval = setInterval(function () {
                 attempts++;
-                if (typeof IntentWave !== "undefined" && typeof IntentWave.customConsent === "function") {
+                if (
+                        typeof IntentWave !== "undefined" &&
+                        typeof IntentWave.customConsent === "function" &&
+                        IntentWave.payload &&
+                        IntentWave.payload.context &&
+                        IntentWave.payload.context.traits &&
+                        IntentWave.payload.context.traits.visitor
+                    )
                     clearInterval(interval);
                     IntentWave.customConsent({
                         categories: buildIntentWaveCategories(purposes),
@@ -74,8 +81,7 @@
             targeted_advertising: true
         });
 
-    // ✅ KEEP: Update if user makes an actual choice in the Ketch banner
-    ketch('on', 'consent', passConsentToIntentWave);
+        ketch('on', 'consent', passConsentToIntentWave);
     </script>
 </head>
 
