@@ -8,26 +8,7 @@
 
     <!-- STEP 1: Ketch Smart Tag -->
     <script>!function(){window.semaphore=window.semaphore||[],window.ketch=function(){window.semaphore.push(arguments)};var e=document.createElement("script");e.type="text/javascript",e.src="https://global.ketchcdn.com/web/v3/config/intentwave_sc/website_smart_tag/boot.js",e.defer=e.async=!0,document.getElementsByTagName("head")[0].appendChild(e)}();</script>
-    <!-- STEP 2: IntentWave Tracking Script — replace data-id with your IntentWave Site ID -->
-    <script>
-        window.IntentWave = window.IntentWave || {};
-        window.IntentWave.track = window.IntentWave.track || function () {
-            window.IntentWave.track.q = window.IntentWave.track.q || [];
-            window.IntentWave.track.q.push(arguments)
-        };
-        (function () {
-            var u = 'https://cdn.intentwave.com/';
-            var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
-            g.type = 'text/javascript'; g.async = !0; g.defer = !0;
-            g.src = u + 'track.js';
-            g.setAttribute('data-name', 'IntentWave');
-            g.setAttribute('data-id', 'fb21eafe-aefd-4b34-87b8-9a6a4c3ae561');
-            s.parentNode.insertBefore(g, s)
-        })()
-    </script>
-
-
-    <!-- STEP 3: IntentWave Custom Consent Script (Ketch) -->
+    <!-- STEP 2: IntentWave Consent-Gated Script (Ketch) -->
     <script>
         function buildIntentWaveCategories(purposes) {
             var categories = [];
@@ -45,39 +26,80 @@
             });
         }
 
-        function passConsentToIntentWave(consent) {
-            var purposes = consent.purposes || consent;
-            if (!purposes) return;
+        var intentWaveLoaded = false;
 
+        function loadIntentWaveScript(callback) {
+            if (intentWaveLoaded) {
+                if (callback) callback();
+                return;
+            }
+            intentWaveLoaded = true;
+            var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+            g.type = 'text/javascript'; g.async = true; g.defer = true;
+            g.src = 'https://cdn.intentwave.com/track.js';
+            g.setAttribute('data-name', 'IntentWave');
+            g.setAttribute('data-id', 'fb21eafe-aefd-4b34-87b8-9a6a4c3ae561');
+            g.onload = callback;
+            s.parentNode.insertBefore(g, s);
+        }
+
+        function buildConsentCookie(purposes) {
+            return {
+                categories: buildIntentWaveCategories(purposes),
+                consentTimestamp: new Date().toISOString(),
+                consentId: generateConsentId(),
+                provider: "ketch",
+                consentURL: window.location.href
+            };
+        }
+
+        function waitForIntentWaveReady(purposes) {
             var attempts = 0;
             var maxAttempts = 50;
             var interval = setInterval(function () {
                 attempts++;
-                if (
-                        typeof IntentWave !== "undefined" &&
-                        typeof IntentWave.customConsent === "function" &&
-                        IntentWave.payload &&
-                        IntentWave.payload.context &&
-                        IntentWave.payload.context.traits &&
-                        IntentWave.payload.context.traits.visitor
-                    ){
+                if (typeof IntentWave !== "undefined" && typeof IntentWave.customConsent === "function") {
                     clearInterval(interval);
-                    IntentWave.customConsent({
-                        categories: buildIntentWaveCategories(purposes),
-                        consentTimestamp: new Date().toISOString(),
-                        consentId: generateConsentId(),
-                        provider: "ketch",
-                        consentURL: window.location.href
-                    });
+                    IntentWave.customConsent(buildConsentCookie(purposes));
                 } else if (attempts >= maxAttempts) {
                     clearInterval(interval);
                 }
             }, 200);
         }
 
-        passConsentToIntentWave({
-            targeted_advertising: true
-        });
+        function loadIdentifyScript(consentCookie) {
+            var hasEmailMarketing = consentCookie.categories.indexOf("emailmarketing") !== -1;
+            if (!hasEmailMarketing || !IntentWave.consent.granted || typeof IntentWave.getConfiguration !== "function") return;
+            IntentWave.getConfiguration().then(function (config) {
+                if (config && config.identify && config.identify.enabled) {
+                    var filtersEnabled = config.identify.filters && config.identify.filters.enabled;
+                    if (filtersEnabled) {
+                        IntentWave.filterMonitor.start(
+                            config.identify.filters,
+                            function (context) {
+                                IntentWave.loadScript("identify", config);
+                            }
+                        );
+                    } else {
+                        IntentWave.loadScript("identify", config);
+                    }
+                }
+            });
+        }
+
+        function passConsentToIntentWave(consent) {
+            var purposes = consent.purposes || consent;
+            if (!purposes) return;
+            if (!intentWaveLoaded) {
+                loadIntentWaveScript(function () {
+                    waitForIntentWaveReady(purposes);
+                });
+            } else if (typeof IntentWave !== "undefined" && typeof IntentWave.customConsent === "function") {
+                var consentCookie = buildConsentCookie(purposes);
+                IntentWave.customConsent(consentCookie);
+                loadIdentifyScript(consentCookie);
+            }
+        }
 
         ketch('on', 'consent', passConsentToIntentWave);
     </script>
